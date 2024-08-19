@@ -1,22 +1,48 @@
 "use client";
-import React, { useState } from "react";
-import CreateWalletModal from "../Create-wallet";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Toast } from 'primereact/toast';
+import { redirect } from "next/navigation";
+
+import CreateWalletModal from "../Create-wallet";
+import { auth, createUserWithEmailAndPassword } from '../../../firebase.config'
+import { createUser, getSession, handleServerLogOut } from "../serverTrigger/serverTrigger";
+import { useMyContext } from "../../layout";
+
 
 const Header = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [logOutDropdown, setLogOutDropdown] = useState(false)
 
-  const openModal = () => {
-    setIsModalOpen(true);
+  const { logIn, logOut, isLoggedIn, loggedInUser, fetchSession } = useMyContext()
+
+  const toast = useRef(null)
+  const dropdownRef = useRef(null);
+
+  const openSignUp = () => {
+    window.location.href = '/patientSignup'
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
   };
 
+  const toggleLogOutDropdown = () => {
+    setLogOutDropdown(prevState => !prevState);
+  }
+
+  const handleLogOut = () => {
+    handleServerLogOut()
+    logOut()
+    setLogOutDropdown(false)
+  }
+
   const handleSubmit = async (data) => {
+
+    const { name, email, ic, walletName, walletPassword } = data
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/wallet/create-user`,
@@ -27,7 +53,7 @@ const Header = () => {
             client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify({ name, email, ic, walletName }),
         }
       );
 
@@ -36,98 +62,72 @@ const Header = () => {
       }
 
       const result = await response.json();
-      //   console.log("User created:", result);
+
+      createUserWithEmailAndPassword(auth, email, walletPassword)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          console.log(user)
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          toast.current.show({ severity: 'error', summary: `Error Code: ${errorCode}`, detail: `${errorMessage}` });
+        });
+
       const walletAddress = result.result.wallet.wallet_address;
-      //   console.log("Wallet address:", walletAddress);
-      // Store the wallet address in sessionStorage
-      sessionStorage.setItem("walletAddress", walletAddress);
+
+      toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
+      createUser({ walletAddress, name: result.result.user.name })
 
       if (!walletAddress) {
         throw new Error("Wallet address not found in the response");
       }
 
-      toast.success(
-        `🦄 User created successfully!
-        Wallet address: ${walletAddress}`,
-        {
-          position: "bottom-center",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-        }
-      );
       closeModal();
     } catch (error) {
       console.error("Error creating user:", error);
-      toast.error("🦄 Error creating user", {
-        position: "bottom-center",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      // Don't send the request if there's an error
+      toast.current.show({ severity: 'error', summary: 'Error', detail: `Error Creating Wallet` });
       return;
+    }
+    finally {
+      fetchSession()
+      logIn()
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setLogOutDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+  }, [])
+
+
   return (
     <header className="w-full py-6 lg:py-4 relative border-b">
+      <Toast ref={toast} />
       <div className="container mx-auto px-8 lg:px-4 flex items-center justify-between">
         <div className="flex items-center">
-          <h1 className="text-xl font-bold">MEDATA</h1>          
+          <h1 className="text-xl font-bold">Health Logo Here</h1>
         </div>
 
-        <button
-          onClick={openModal}
-          className="border rounded-md py-2 px-4 hover:bg-black hover:text-white transition-all duration-300"
-        >
-          {typeof window !== "undefined" &&
-          window.sessionStorage.getItem("walletAddress") ? (
-            <span className="text-sm">
-              {`${window.sessionStorage
-                .getItem("walletAddress")
-                .slice(0, 6)}...${window.sessionStorage
-                .getItem("walletAddress")
-                .slice(-4)}`}
-            </span>
-          ) : (
-            "Create Wallet"
-          )}
-        </button>
-        
-      </div>
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
+        <div className="relative">
+          <button
+            onClick={isLoggedIn ? toggleLogOutDropdown : openSignUp}
+            className="border rounded-md py-2 px-4 hover:bg-black hover:text-white transition-all duration-300"
           >
-            <CreateWalletModal onSubmit={handleSubmit} onClose={closeModal} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <ToastContainer
-        position="bottom-center"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
+            {loggedInUser?.walletAddress ? `${loggedInUser.walletAddress.slice(0, 6)}...${loggedInUser.walletAddress.slice(-4)}` : "Create Wallet"}
+          </button>
+          {logOutDropdown && (
+            <div ref={dropdownRef} className='z-50 absolute right-0 top-12 py-1 px-2 w-48 rounded-sm bg-white border shadow'>
+              <button onClick={handleLogOut} className="w-full px-2 py-2 rounded-md text-left hover:bg-gray-200 duration-200">Log Out</button>
+            </div>
+          )}
+        </div>
+      </div>
     </header>
   );
 };

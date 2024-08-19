@@ -6,10 +6,11 @@ const CreateWalletModal = ({ onSubmit, onClose }) => {
   const [email, setEmail] = useState("");
   const [ic, setIc] = useState("");
   const [walletName, setWalletName] = useState("");
+  const [walletPassword, setWalletPassword] = useState("")
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ name, email, ic, walletName });
+    onSubmit({ name, email, ic, walletName, walletPassword });
   };
 
   return (
@@ -65,6 +66,19 @@ const CreateWalletModal = ({ onSubmit, onClose }) => {
               id="walletName"
               value={walletName}
               onChange={(e) => setWalletName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="walletName" className="block mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              id="walletPassword"
+              value={walletPassword}
+              onChange={(e) => setWalletPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded-md"
               required
             />
