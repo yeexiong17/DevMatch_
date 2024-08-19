@@ -71,6 +71,10 @@ export default function Home() {
       const result = await response.json()
 
       const walletAddress = result.result.wallet.wallet_address
+      if (!walletAddress) {
+        throw new Error("Wallet address not found in the response")
+      }
+
       console.log(result)
 
       // Creates New Document Upon Registration
@@ -82,19 +86,13 @@ export default function Home() {
       toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
 
       createUser({ walletAddress, name: result.result.user.name })
-
-      if (!walletAddress) {
-        throw new Error("Wallet address not found in the response")
-      }
+      fetchSession()
+      logIn()
 
       closeModal()
     } catch (error) {
       console.error("Error creating user:", error)
       return
-    }
-    finally {
-      fetchSession()
-      logIn()
     }
   };
 

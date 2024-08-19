@@ -2,9 +2,6 @@
 import { useState, useEffect } from "react"
 import SubNav from '../components/SubNav/SubNav'
 
-import Link from 'next/link'
-
-
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState(null);
 

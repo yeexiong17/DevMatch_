@@ -1,8 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app"
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { collection, setDoc, doc, getDocs, query, where } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
+import { collection, setDoc, doc, getDoc } from "firebase/firestore"
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -12,13 +12,13 @@ const firebaseConfig = {
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-};
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 
-const db = getFirestore(app);
+const db = getFirestore(app)
 const auth = getAuth(app)
 
-export { auth, db, setDoc, doc, getDocs, query, where, collection, createUserWithEmailAndPassword, signInWithEmailAndPassword };
+export { auth, db, setDoc, doc, getDoc, collection, createUserWithEmailAndPassword, signInWithEmailAndPassword }
 
