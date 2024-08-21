@@ -20,7 +20,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    console.log('Updated doctorList:', doctorList);
+    console.log('Updated Doctor List:', doctorList);
   }, [doctorList]);
 
   async function getAllDoctors() {
@@ -30,10 +30,10 @@ export default function Home() {
     querySnapshot.forEach((doc) => {
 
       let doctorData = doc.data()
-      console.log(doctorData.patientAccess.includes(loggedInUser.walletAddress))
+
       if (!doctorData.patientAccess.includes(loggedInUser.walletAddress)) {
         setDoctorList(oldDoctorList => {
-          // Unique In Doctor List
+          // Make Sure The List Of Doctors Is Unique
           const combinedList = [...oldDoctorList, doctorData];
           const uniqueList = Array.from(new Map(combinedList.map(doctor => [doctor.walletAddress, doctor])).values());
 
@@ -44,8 +44,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    console.log(doctorOption)
-
+    console.log("Doctor Access Selection:", doctorOption)
   }, [doctorOption])
 
   const handleRemoveAccess = () => {
@@ -59,7 +58,6 @@ export default function Home() {
   }
 
   const handleAllowAccess = async () => {
-
     if (!doctorOption) {
       return alert('Doctor is not chosen yet')
     }
@@ -71,7 +69,6 @@ export default function Home() {
     })
 
     alert(`Doctor: ${doctorOption.walletAddress} has been granted access`)
-
   }
 
   return (

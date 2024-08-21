@@ -92,6 +92,7 @@ export default function Home() {
       await setDoc(doc(db, "doctors", result.result.user.email), {
         name: result.result.user.name,
         email: result.result.user.email,
+        patientAccess: [],
         walletAddress: walletAddress
       })
 
