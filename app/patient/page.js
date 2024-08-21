@@ -2,24 +2,76 @@
 import { useState, useEffect } from "react"
 import SubNav from '../components/SubNav/SubNav'
 
+import { query, collection, db, getDocs, updateDoc, arrayUnion, doc } from '../../firebase.config'
+
+import { useMyContext } from '../layout'
+
 export default function Home() {
-  const [walletAddress, setWalletAddress] = useState(null);
 
-  useEffect(() => {
-    const storedWalletAddress = sessionStorage.getItem("walletAddress")
-    if (storedWalletAddress) {
-      setWalletAddress(storedWalletAddress)
-    }
-  }, [])
+  const { logIn, logOut, isLoggedIn, loggedInUser, fetchSession } = useMyContext()
 
+  const [doctorList, setDoctorList] = useState([])
+  const [doctorOption, setDoctorOption] = useState(null)
   const [isAccessAllowed, setIsAccessAllowed] = useState(false)
 
-  const handleAllowAccess = () => {
-    setIsAccessAllowed(true)
+
+  useEffect(() => {
+    getAllDoctors()
+  }, [])
+
+  useEffect(() => {
+    console.log('Updated doctorList:', doctorList);
+  }, [doctorList]);
+
+  async function getAllDoctors() {
+    const q = query(collection(db, "doctors"));
+
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+
+      let doctorData = doc.data()
+      console.log(doctorData.patientAccess.includes(loggedInUser.walletAddress))
+      if (!doctorData.patientAccess.includes(loggedInUser.walletAddress)) {
+        setDoctorList(oldDoctorList => {
+          // Unique In Doctor List
+          const combinedList = [...oldDoctorList, doctorData];
+          const uniqueList = Array.from(new Map(combinedList.map(doctor => [doctor.walletAddress, doctor])).values());
+
+          return uniqueList;
+        });
+      }
+    })
   }
+
+  useEffect(() => {
+    console.log(doctorOption)
+
+  }, [doctorOption])
 
   const handleRemoveAccess = () => {
     setIsAccessAllowed(false)
+  }
+
+  const handleDoctorSelection = (e) => {
+    const selectedDoctor = JSON.parse(e.target.value)
+    setDoctorOption(selectedDoctor)
+    console.log(selectedDoctor)
+  }
+
+  const handleAllowAccess = async () => {
+
+    if (!doctorOption) {
+      return alert('Doctor is not chosen yet')
+    }
+
+    const doctorRef = doc(db, "doctors", doctorOption.email)
+
+    await updateDoc(doctorRef, {
+      patientAccess: arrayUnion(loggedInUser.walletAddress)
+    })
+
+    alert(`Doctor: ${doctorOption.walletAddress} has been granted access`)
+
   }
 
   return (
@@ -167,17 +219,20 @@ export default function Home() {
           <div className="bg-gray-100 p-4 rounded-md"><h2 className="text-xl font-semibold pb-4 border-b border-gray-300">Allow Medical Record Access </h2></div>
           <div className="bg-gray-100 p-4 rounded-md">
             <label htmlFor="doctor" className="block mb-2"><strong>Doctor:</strong></label>
-            <select id="doctor" className="p-2 border rounded-md w-full">
-              <option>Dr John Lee</option>
-              <option>Dr Lim Zi Xian</option>
-              <option>Dr Wong Yee Xiong</option>
-              <option>Dr Leong EM</option>
-              <option>Dr Bevvy</option>
-              <option>Dr Ang Lee</option>
-              <option>Dr Azula</option>
+            <select onChange={handleDoctorSelection} id="doctor" className="p-2 border rounded-md w-full">
+              <option value={""}>--Select An Option--</option>
+              {doctorList.map((doctor) => (
+                <option key={doctor.walletAddress} value={JSON.stringify(doctor)}>
+                  Dr {doctor.name}
+                </option>
+              ))}
             </select>
 
-            <button onClick={handleAllowAccess} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">
+            <button
+              onClick={handleAllowAccess}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md"
+              disabled={!doctorOption}
+            >
               Allow Access
             </button>
           </div>
@@ -209,7 +264,6 @@ export default function Home() {
                       </button>
                     </td>
                   </tr>
-                  {/* Add more rows as needed */}
                 </tbody>
               )}
             </table>

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toast } from 'primereact/toast';
 
-import { auth, createUserWithEmailAndPassword, addDoc, collection, db } from '../../firebase.config'
+import { auth, createUserWithEmailAndPassword, setDoc, doc, db } from '../../firebase.config'
 import { createDoc, getSession, handleServerLogOut } from "../components/serverTrigger/serverTrigger";
 import Link from 'next/link';
 import { useMyContext } from "../layout";
@@ -89,11 +89,11 @@ export default function Home() {
       const walletAddress = result.result.wallet.wallet_address;
       console.log(result)
 
-      await addDoc(collection(db, "users"), {
+      await setDoc(doc(db, "doctors", result.result.user.email), {
         name: result.result.user.name,
         email: result.result.user.email,
         walletAddress: walletAddress
-      });
+      })
 
       toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
 
@@ -102,8 +102,6 @@ export default function Home() {
       if (!walletAddress) {
         throw new Error("Wallet address not found in the response");
       }
-
-      closeModal();
     } catch (error) {
       console.error("Error creating user:", error);
       return;

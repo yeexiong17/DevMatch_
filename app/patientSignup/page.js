@@ -3,19 +3,15 @@ import { useState, useEffect, useRef } from "react"
 import { Toast } from 'primereact/toast'
 
 import { auth, createUserWithEmailAndPassword, setDoc, doc, db } from '../../firebase.config'
-import { createUser, getSession, handleServerLogOut } from "../components/serverTrigger/serverTrigger";
+import { createUser } from "../components/serverTrigger/serverTrigger";
 import Link from 'next/link';
 import { useMyContext } from "../layout"
-
 
 export default function Home() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [ic, setIc] = useState("")
   const [walletPassword, setWalletPassword] = useState("")
-  const [patientId, setPatientId] = useState('')
-  const [authCode, setAuthCode] = useState('')
-  const [walletAddress, setWalletAddress] = useState(null)
 
   const toast = useRef(null)
 
@@ -28,12 +24,6 @@ export default function Home() {
       setWalletAddress(storedWalletAddress)
     }
   }, []);
-
-
-  const handleSearch = () => {
-    // Implement search functionality here
-    console.log(`Searching for Patient ID: ${patientId} with Auth Code: ${authCode}`)
-  };
 
   const handleLogIn = async (e) => {
     e.preventDefault();
@@ -100,7 +90,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-gray-100">
       <Toast ref={toast} />
       {/* //==========================Health Dashboard========================== */}
-      <div className="min-h-screen md:w-3/5 mt-10 flex flex-col md:flex-row">
+      <div className="min-h-screen md:w-9/12 mt-10 flex flex-col md:flex-row">
         {/* Left Side */}
         <div className="w-full md:w-1/2 bg-gradient-to-br from-purple-500 to-orange-400 flex items-center justify-center h-96 md:h-auto">
           <div className="text-center p-8">

@@ -29,7 +29,7 @@ const Login = ({ role }) => {
                 console.log(user.email)
 
                 // Get User Info From Firebase
-                const docRef = doc(db, "users", user.email);
+                const docRef = doc(db, role == 'Patient' ? 'users' : 'doctors', user.email);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -120,13 +120,13 @@ const Login = ({ role }) => {
                         </form>
                         <div style={{ justifyContent: 'space-between' }} className="flex">
                             <div className="mt-6 text-center">
-                                <Link href={`/${role == 'Patient' ? 'doctorSignup' : 'patientSignup'}`} className="text-sm text-purple-500 hover:text-purple-700">
+                                <Link href={`/${role == 'Patient' ? 'patientSignup' : 'doctorSignup'}`} className="text-sm text-purple-500 hover:text-purple-700">
                                     SignUp
                                 </Link>
                             </div>
                             <div className="mt-6 text-center">
 
-                                <Link href={`/${role == 'Patient' ? 'doctorLogin' : 'login'}`} className="text-sm text-purple-500 hover:text-purple-700">
+                                <Link href={`/${role == 'Patient' ? 'login' : 'doctorLogin'}`} className="text-sm text-purple-500 hover:text-purple-700">
                                     {role == 'Patient' ? 'Doctor' : 'Patient'} Login
                                 </Link>
                             </div>
