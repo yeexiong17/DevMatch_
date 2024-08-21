@@ -98,7 +98,7 @@ export default function Home() {
 
       toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
 
-      createDoc({ walletAddress, name: result.result.user.name })
+      createDoc({ email, walletAddress, name: result.result.user.name })
 
       if (!walletAddress) {
         throw new Error("Wallet address not found in the response");

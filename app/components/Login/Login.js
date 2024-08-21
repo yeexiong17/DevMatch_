@@ -29,7 +29,7 @@ const Login = ({ role }) => {
                 console.log(user.email)
 
                 // Get User Info From Firebase
-                const docRef = doc(db, role == 'Patient' ? 'users' : 'doctors', user.email);
+                const docRef = doc(db, role == 'Patient' ? 'patients' : 'doctors', user.email);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -39,7 +39,7 @@ const Login = ({ role }) => {
                     toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${userData.walletAddress} Logged In Successfully` })
 
                     // Creates Session For Logged In User
-                    role == 'Patient' ? createUser({ walletAddress: userData.walletAddress, name: userData.name }) : createDoc({ walletAddress: userData.walletAddress, name: userData.name })
+                    role == 'Patient' ? createUser({ email: userData.email, walletAddress: userData.walletAddress, name: userData.name }) : createDoc({ walletAddress: userData.walletAddress, name: userData.name })
                     fetchSession()
                     logIn()
                 } else {

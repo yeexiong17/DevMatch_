@@ -37,6 +37,7 @@ export default function RootLayout({ children }) {
 
   const fetchSession = async () => {
     try {
+      setIsLoading(true);
       const session = await getSession();
       setLoggedInUser(session.user);
       logIn();

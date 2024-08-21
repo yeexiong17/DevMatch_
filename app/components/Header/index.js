@@ -39,62 +39,6 @@ const Header = () => {
     setLogOutDropdown(false)
   }
 
-  const handleSubmit = async (data) => {
-
-    const { name, email, ic, walletName, walletPassword } = data
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/wallet/create-user`,
-        {
-          method: "POST",
-          headers: {
-            client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
-            client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name, email, ic, walletName }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to create user");
-      }
-
-      const result = await response.json();
-
-      createUserWithEmailAndPassword(auth, email, walletPassword)
-        .then((userCredential) => {
-          const user = userCredential.user;
-          console.log(user)
-        })
-        .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          toast.current.show({ severity: 'error', summary: `Error Code: ${errorCode}`, detail: `${errorMessage}` });
-        });
-
-      const walletAddress = result.result.wallet.wallet_address;
-
-      toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
-      createUser({ walletAddress, name: result.result.user.name })
-
-      if (!walletAddress) {
-        throw new Error("Wallet address not found in the response");
-      }
-
-      closeModal();
-    } catch (error) {
-      console.error("Error creating user:", error);
-      toast.current.show({ severity: 'error', summary: 'Error', detail: `Error Creating Wallet` });
-      return;
-    }
-    finally {
-      fetchSession()
-      logIn()
-    }
-  };
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {

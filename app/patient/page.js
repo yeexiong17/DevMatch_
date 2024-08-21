@@ -13,33 +13,38 @@ export default function Home() {
   const [doctorList, setDoctorList] = useState([])
   const [doctorOption, setDoctorOption] = useState(null)
   const [isAccessAllowed, setIsAccessAllowed] = useState(false)
+  const [accessDoctor, setAccessDoctor] = useState([])
 
 
   useEffect(() => {
-    getAllDoctors()
+    getAccessDoctor()
   }, [])
 
   useEffect(() => {
-    console.log('Updated Doctor List:', doctorList);
-  }, [doctorList]);
+    getAllDoctors()
+    console.log(accessDoctor)
+  }, [accessDoctor])
 
   async function getAllDoctors() {
     const q = query(collection(db, "doctors"));
 
+    let doctorList = []
+
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((doc) => {
+      doctorList.push(doc.data())
+    })
+    setDoctorList(doctorList.filter(doctor => !accessDoctor.some(accessDoctor => accessDoctor.walletAddress === doctor.walletAddress)))
+  }
 
-      let doctorData = doc.data()
+  // Get All Doctors That Have Access
+  async function getAccessDoctor() {
+    const q = query(collection(db, "patients"))
 
-      if (!doctorData.patientAccess.includes(loggedInUser.walletAddress)) {
-        setDoctorList(oldDoctorList => {
-          // Make Sure The List Of Doctors Is Unique
-          const combinedList = [...oldDoctorList, doctorData];
-          const uniqueList = Array.from(new Map(combinedList.map(doctor => [doctor.walletAddress, doctor])).values());
-
-          return uniqueList;
-        });
-      }
+    const querySnapshot = await getDocs(q)
+    querySnapshot.forEach((doc) => {
+      let patientData = doc.data()
+      setAccessDoctor(patientData.doctorAccess)
     })
   }
 
@@ -47,8 +52,20 @@ export default function Home() {
     console.log("Doctor Access Selection:", doctorOption)
   }, [doctorOption])
 
-  const handleRemoveAccess = () => {
-    setIsAccessAllowed(false)
+  const handleRemoveAccess = async (doctorToRemove) => {
+    console.log(doctorToRemove)
+
+    const removedDoctorArray = accessDoctor.filter((doctor) => doctor.walletAddress != doctorToRemove.walletAddress)
+
+    const patientRef = doc(db, "patients", loggedInUser.email);
+
+    await updateDoc(patientRef, {
+      doctorAccess: removedDoctorArray
+    })
+
+    alert(`Dr ${doctorToRemove.name} access has been removed! `)
+
+    getAccessDoctor()
   }
 
   const handleDoctorSelection = (e) => {
@@ -62,12 +79,15 @@ export default function Home() {
       return alert('Doctor is not chosen yet')
     }
 
-    const doctorRef = doc(db, "doctors", doctorOption.email)
+    const patientRef = doc(db, "patients", loggedInUser.email)
 
-    await updateDoc(doctorRef, {
-      patientAccess: arrayUnion(loggedInUser.walletAddress)
+    await updateDoc(patientRef, {
+      doctorAccess: arrayUnion(doctorOption)
     })
 
+    document.querySelector('#doctorSelect').value = ""
+    setDoctorOption(null)
+    getAccessDoctor()
     alert(`Doctor: ${doctorOption.walletAddress} has been granted access`)
   }
 
@@ -215,14 +235,16 @@ export default function Home() {
         <div style={{ borderStyle: 'solid', borderWidth: '1px', borderColor: 'gray' }} className="mb-6 rounded-md">
           <div className="bg-gray-100 p-4 rounded-md"><h2 className="text-xl font-semibold pb-4 border-b border-gray-300">Allow Medical Record Access </h2></div>
           <div className="bg-gray-100 p-4 rounded-md">
-            <label htmlFor="doctor" className="block mb-2"><strong>Doctor:</strong></label>
-            <select onChange={handleDoctorSelection} id="doctor" className="p-2 border rounded-md w-full">
+            <label htmlFor="doctorSelect" className="block mb-2"><strong>Doctor:</strong></label>
+            <select onChange={handleDoctorSelection} id="doctorSelect" className="p-2 border rounded-md w-full">
               <option value={""}>--Select An Option--</option>
-              {doctorList.map((doctor) => (
-                <option key={doctor.walletAddress} value={JSON.stringify(doctor)}>
-                  Dr {doctor.name}
-                </option>
-              ))}
+              {
+                doctorList.map((doctor) => (
+                  <option key={doctor.walletAddress} value={JSON.stringify(doctor)}>
+                    Dr {doctor.name}
+                  </option>
+                ))
+              }
             </select>
 
             <button
@@ -250,19 +272,21 @@ export default function Home() {
                   <th className="text-left py-2 px-4 border-b">Action</th>
                 </tr>
               </thead>
-              {isAccessAllowed && (
-                <tbody>
-                  <tr>
-                    <td className="py-2 px-4 border-b">Dr John Lee</td>
-                    <td className="py-2 px-4 border-b">0xb673a84b062a387925a210622bA66411Ef6e0a4e</td>
-                    <td className="py-2 px-4 border-b">
-                      <button onClick={handleRemoveAccess} className="bg-red-500 text-white px-4 py-2 rounded-md">
-                        Remove access
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              )}
+              <tbody>
+                {
+                  accessDoctor.map((doctor, index) => (
+                    <tr key={index}>
+                      <td className="py-2 px-4 border-b">Dr {doctor.name}</td>
+                      <td className="py-2 px-4 border-b">{doctor.walletAddress}</td>
+                      <td className="py-2 px-4 border-b">
+                        <button onClick={() => handleRemoveAccess(doctor)} className="bg-red-500 text-white px-4 py-2 rounded-md">
+                          Remove access
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
             </table>
           </div>
         </div>

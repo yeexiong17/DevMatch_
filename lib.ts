@@ -43,7 +43,7 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 export async function login(data) {
-    const user = { walletAddress: data.walletAddress, name: data.name };
+    const user = { email: data.email, walletAddress: data.walletAddress, name: data.name };
 
     // Create the session
     const expires = new Date(Date.now() + 10 * 60 * 1000);

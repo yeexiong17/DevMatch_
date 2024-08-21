@@ -68,14 +68,15 @@ export default function Home() {
       console.log(result)
 
       // Creates New Document Upon Registration
-      await setDoc(doc(db, "users", result.result.user.email), {
+      await setDoc(doc(db, 'patients', result.result.user.email), {
+        email: result.result.user.email,
         name: result.result.user.name,
         walletAddress: walletAddress
       })
 
       toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${walletAddress} Created Successfully` });
 
-      createUser({ walletAddress, name: result.result.user.name })
+      createUser({ email, walletAddress, name: result.result.user.name })
       fetchSession()
       logIn()
 
