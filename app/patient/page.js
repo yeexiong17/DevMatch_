@@ -53,8 +53,6 @@ export default function Home() {
   }, [doctorOption])
 
   const handleRemoveAccess = async (doctorToRemove) => {
-    console.log(doctorToRemove)
-
     const removedDoctorArray = accessDoctor.filter((doctor) => doctor.walletAddress != doctorToRemove.walletAddress)
 
     const patientRef = doc(db, "patients", loggedInUser.email);
@@ -273,7 +271,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {
+                {accessDoctor && accessDoctor.length > 0 ? (
                   accessDoctor.map((doctor, index) => (
                     <tr key={index}>
                       <td className="py-2 px-4 border-b">Dr {doctor.name}</td>
@@ -285,7 +283,11 @@ export default function Home() {
                       </td>
                     </tr>
                   ))
-                }
+                ) : (
+                  <tr>
+                    <td colSpan="3" className="py-2 px-4 border-b text-center">No doctor available</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
