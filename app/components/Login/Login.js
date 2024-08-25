@@ -126,7 +126,7 @@ const Login = ({ role }) => {
                             </div>
                             <div className="mt-6 text-center">
 
-                                <Link href={`/${role == 'Patient' ? 'login' : 'doctorLogin'}`} className="text-sm text-purple-500 hover:text-purple-700">
+                                <Link href={`/${role == 'Patient' ? 'doctorLogin' : 'login'}`} className="text-sm text-purple-500 hover:text-purple-700">
                                     {role == 'Patient' ? 'Doctor' : 'Patient'} Login
                                 </Link>
                             </div>

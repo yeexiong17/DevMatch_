@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Link from 'next/link'
+import { Dialog } from 'primereact/dialog';
 
 import { query, collection, db, getDocs, updateDoc, arrayUnion, doc } from '../../firebase.config'
 import { useMyContext } from '../layout'
@@ -14,6 +15,7 @@ export default function Home() {
   const [isPatientRecordVisible, setIsPatientRecordVisible] = useState(false)
   const [isSaved, setIsSavedAllowed] = useState(false)
   const [seeDetails, setSeeDetailsAllowed] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     getPatientWithAccess()
@@ -44,11 +46,6 @@ export default function Home() {
     setPatientWithAccess(patientList)
   }
 
-
-  const toggleRecordVisibility = () => {
-    setIsRecordVisible(!isRecordVisible)
-  }
-
   const togglePatientRecordVisibility = () => {
     setIsPatientRecordVisible(!isPatientRecordVisible)
   }
@@ -59,6 +56,50 @@ export default function Home() {
 
   const handleSeeDetailsAllowAccess = () => {
     setSeeDetailsAllowed(true)
+  }
+
+  const getPatientRecord = async (walletAddress) => {
+
+    let patientData = null
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/audit/audit?tag=13`, {
+      method: 'GET',
+      headers: {
+        client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
+        client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
+        "Content-Type": "application/json",
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed To Get Patient Record")
+    }
+
+    const result = await response.json()
+
+    patientData = result.result.filter((record) => {
+      let metadata = record.metadata
+      let parseMetadata = JSON.parse(metadata)
+
+      return parseMetadata.patient == walletAddress
+    })
+      .map((record) => {
+        const parsedData = JSON.parse(record.metadata)
+
+        return parsedData
+      })
+
+    console.log(patientData)
+
+    // const metadata = JSON.parse(result.result[0].metadata)
+
+
+  }
+
+  const toggleRecordVisibility = (patientWalletAddress) => {
+    setVisible(true)
+    setIsRecordVisible(!isRecordVisible)
+    getPatientRecord(patientWalletAddress)
   }
 
   return (
@@ -159,7 +200,7 @@ export default function Home() {
                       <td className="py-2 px-4 border-b">{patient.walletAddress}</td>
                       <td className="py-2 px-4 border-b">
                         <button
-                          onClick={toggleRecordVisibility}
+                          onClick={() => toggleRecordVisibility(patient.walletAddress)}
                           className={`px-4 py-2 rounded-md ${isRecordVisible ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}
                         >
                           {isRecordVisible ? 'Hide Records' : 'Edit Records'}
@@ -175,381 +216,384 @@ export default function Home() {
               </tbody>
             </table>
 
+            {/* Popup For Viewing Patient Medical Record */}
+            <Dialog className="w-full lg:w-9/12" header="Patient's Record" visible={visible} onHide={() => { if (!visible) return; setVisible(false); }} draggable={false} resizable={false}>
+              {isRecordVisible && (
+                <div className="p-4 bg-white rounded-md border border-gray-300 mb-4">
+                  <table className="min-w-full bg-white border border-gray-300 rounded-md mb-4">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 px-4 border-b">Patient</th>
+                        <th className="text-left py-2 px-4 border-b">Client Key</th>
+                        <th className="text-left py-2 px-4 border-b">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-2 px-4 border-b">Leong Ee Mun</td>
+                        <td className="py-2 px-4 border-b">0xa2B6BB2B7811Dbe3af0b348D1c164098C914e075</td>
+                        <td className="py-2 px-4 border-b">
+                          <button
+                            onClick={togglePatientRecordVisibility}
+                            className={`px-4 py-2 rounded-md ${isPatientRecordVisible ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}
+                          >
+                            {isPatientRecordVisible ? 'Hide Patient Past Records' : 'View Patient Past Records'}
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-            {isRecordVisible && (
-              <div className="p-4 bg-white rounded-md border border-gray-300 mb-4">
-                <table className="min-w-full bg-white border border-gray-300 rounded-md mb-4">
-                  <thead>
-                    <tr>
-                      <th className="text-left py-2 px-4 border-b">Patient</th>
-                      <th className="text-left py-2 px-4 border-b">Client Key</th>
-                      <th className="text-left py-2 px-4 border-b">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="py-2 px-4 border-b">Leong Ee Mun</td>
-                      <td className="py-2 px-4 border-b">0xa2B6BB2B7811Dbe3af0b348D1c164098C914e075</td>
-                      <td className="py-2 px-4 border-b">
-                        <button
-                          onClick={togglePatientRecordVisibility}
-                          className={`px-4 py-2 rounded-md ${isPatientRecordVisible ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}
-                        >
-                          {isPatientRecordVisible ? 'Hide Patient Past Records' : 'View Patient Past Records'}
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                {isPatientRecordVisible && (
-                  <div style={{ borderStyle: 'solid', borderWidth: '1px', borderColor: 'gray' }} className="mb-6 rounded-md">
-                    <div className="bg-gray-100 p-4 rounded-md"><h2 className="text-xl font-semibold pb-4 border-b border-gray-300">Patient Medical Information</h2></div>
-                    <div className="bg-gray-100 pl-4 pr-4 pt-0.5 rounded-md">
-                      {/* //======================================== Patient Database UI*/}
-                      <div className="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-md">
-                        <div className="flex justify-between items-center mb-6">
-                          <div className="flex items-center">
-                            <img src="https://via.placeholder.com/150/000000/FFFFFF/?text=Anon" alt="Annoymous Patient" className="w-16 h-16 rounded-full mr-4" />
+                  {isPatientRecordVisible && (
+                    <div style={{ borderStyle: 'solid', borderWidth: '1px', borderColor: 'gray' }} className="mb-6 rounded-md">
+                      <div className="bg-gray-100 p-4 rounded-md"><h2 className="text-xl font-semibold pb-4 border-b border-gray-300">Patient Medical Information</h2></div>
+                      <div className="bg-gray-100 pl-4 pr-4 pt-0.5 rounded-md">
+                        {/* //======================================== Patient Database UI*/}
+                        <div className="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-md">
+                          <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center">
+                              <img src="https://via.placeholder.com/150/000000/FFFFFF/?text=Anon" alt="Annoymous Patient" className="w-16 h-16 rounded-full mr-4" />
+                              <div>
+                                {/* TODO: linking here */}
+                                <h2 className="text-2xl font-bold">Leong Ee Mun</h2>
+                                <p className="text-gray-500">Tel: +6012-772 6269</p>
+                              </div>
+                            </div>
                             <div>
-                              {/* TODO: linking here */}
-                              <h2 className="text-2xl font-bold">Leong Ee Mun</h2>
-                              <p className="text-gray-500">Tel: +6012-772 6269</p>
+                              <p className="text-lg"><strong>Age</strong></p>
+                              <p>21</p>
+                            </div>
+                            <div>
+                              <p className="text-lg"><strong>Date of Birth</strong></p>
+                              <p>04/07/2003</p>
+                            </div>
+                            <div>
+                              <p className="text-lg"><strong>Allergies</strong></p>
+                              <p>Penicillin</p>
+                            </div>
+                            <div>
+                              <p className="text-lg"><strong>Medical problems</strong></p>
+                              <p>Asthma</p>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-lg"><strong>Age</strong></p>
-                            <p>21</p>
-                          </div>
-                          <div>
-                            <p className="text-lg"><strong>Date of Birth</strong></p>
-                            <p>04/07/2003</p>
-                          </div>
-                          <div>
-                            <p className="text-lg"><strong>Allergies</strong></p>
-                            <p>Penicillin</p>
-                          </div>
-                          <div>
-                            <p className="text-lg"><strong>Medical problems</strong></p>
-                            <p>Asthma</p>
-                          </div>
-                        </div>
 
-                        <div className="border-b border-gray-200 mb-6">
-                          {/* <ul className="flex space-x-4 text-blue-500">
+                          <div className="border-b border-gray-200 mb-6">
+                            {/* <ul className="flex space-x-4 text-blue-500">
                       <li className="font-bold">Patient Medical History</li>
                     </ul> */}
-                        </div>
+                          </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                          {/* Left Section */}
-                          <div className="col-span-1 lg:col-span-2">
-                            <div className="mb-6">
-                              <h3 className="text-lg font-semibold">Medical History</h3>
-                              <div className="p-4 bg-gray-100 rounded-md mb-4 ">
-                                <div onClick={handleSeeDetailsAllowAccess} style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                                  {/* add new div content when clicked */}
-                                  {isSaved && (<div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                    <div>
-                                      <p><strong>Diagnosis: </strong>Stroke</p>
-                                      <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
+                          <div className="grid grid-cols-1 gap-4">
+                            {/* Left Section */}
+                            <div className="col-span-1 lg:col-span-2">
+                              <div className="mb-6">
+                                <h3 className="text-lg font-semibold">Medical History</h3>
+                                <div className="p-4 bg-gray-100 rounded-md mb-4 ">
+                                  <div onClick={handleSeeDetailsAllowAccess} style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                    {/* add new div content when clicked */}
+                                    {isSaved && (<div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
+                                      <div>
+                                        <p><strong>Diagnosis: </strong>Stroke</p>
+                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
+                                      </div>
+                                      <div>
+                                        <p>18/08/2024</p>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p>18/08/2024</p>
+                                    )}
+                                    {/* 1 div content  */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
+                                      <div>
+                                        <p><strong>Diagnosis: </strong>Fever</p>
+                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
+                                      </div>
+                                      <div>
+                                        <p>09/07/2024</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  )}
-                                  {/* 1 div content  */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                    <div>
-                                      <p><strong>Diagnosis: </strong>Fever</p>
-                                      <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
+                                    {/* 2 div content  */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
+                                      <div>
+                                        <p><strong>Diagnosis: </strong>Covid-19</p>
+                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Lim, Dr Lim Clinic</p>
+                                      </div>
+                                      <div>
+                                        <p>07/11/2021</p>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p>09/07/2024</p>
+                                    {/* 3 div content  */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
+                                      <div>
+                                        <p><strong>Diagnosis: </strong>Discharge letter</p>
+                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Gleneagles Hospital Kuala Lumpur</p>
+                                      </div>
+                                      <div>
+                                        <p>21/10/2017</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  {/* 2 div content  */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                    <div>
-                                      <p><strong>Diagnosis: </strong>Covid-19</p>
-                                      <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Lim, Dr Lim Clinic</p>
-                                    </div>
-                                    <div>
-                                      <p>07/11/2021</p>
-                                    </div>
-                                  </div>
-                                  {/* 3 div content  */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                    <div>
-                                      <p><strong>Diagnosis: </strong>Discharge letter</p>
-                                      <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Gleneagles Hospital Kuala Lumpur</p>
-                                    </div>
-                                    <div>
-                                      <p>21/10/2017</p>
-                                    </div>
-                                  </div>
-                                  {/* 4 div content  */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                    <div>
-                                      <p><strong>Diagnosis: </strong>Influenza A virus</p>
-                                      <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Kuala Lumpur Hospital</p>
-                                    </div>
-                                    <div>
-                                      <p>16/10/2017</p>
+                                    {/* 4 div content  */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
+                                      <div>
+                                        <p><strong>Diagnosis: </strong>Influenza A virus</p>
+                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Kuala Lumpur Hospital</p>
+                                      </div>
+                                      <div>
+                                        <p>16/10/2017</p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
+
+                            {/* Right Section */}
+                            {/* TODO */}
+                            {/* <div className="mb-6">
+                              <h3 className="text-lg font-semibold">Details</h3>
+                              {!seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
+                                <strong>Attended Doctor:</strong>
+                                <p>Dr. John Lee</p><br></br>
+                                <strong>Practice Address:</strong>
+                                <p>Columbia Asia Hospital Setapak</p><br></br>
+                                <strong>Date & Time:</strong>
+                                <p>09/07/2024, 11.26 am</p><br></br>
+                                <strong>Diagnosis:</strong>
+                                <p>Fever</p><br></br>
+                                <strong>Diagnosis Details:</strong>
+                                <p>Diagnosed with fever, likely due to a viral infection, recommended rest, hydration, and antipyretics for symptom management.</p><br></br>
+                                <strong>Medications Prescribed:</strong>
+                                <p>Paracetamol (Panadol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 4,000 mg per day.
+                                  Acetaminophen (Tylenol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 3,000 mg per day.
+                                  Ibuprofen (Advil, Motrin): 400 mg orally every 4-6 hours as needed for fever. Do not exceed 3,200 mg per day.
+                                </p>
+                              </div>
+                              )}
+
+                              {seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
+                                <strong>Attended Doctor:</strong>
+                                <p>Dr. John Lee</p><br></br>
+                                <strong>Practice Address:</strong>
+                                <p>Columbia Asia Hospital Setapak</p><br></br>
+                                <strong>Date & Time:</strong>
+                                <p>09/07/2024, 11.26 am</p><br></br>
+                                <strong>Diagnosis:</strong>
+                                <p>Stroke</p><br></br>
+                                <strong>Diagnosis Details:</strong>
+                                <p>Diagnosed with stroke, immediate treatment required to restore blood flow to the brain and minimize potential damage, followed by rehabilitation and long-term management</p><br></br>
+                                <strong>Medications Prescribed:</strong>
+                                <p>Antiplatelet Agent:
+
+                                  Aspirin 81 mg orally once daily.
+                                  Clopidogrel (Plavix) 75 mg orally once daily if the patient is allergic to aspirin.
+                                  Anticoagulant (if indicated):
+
+                                  Warfarin (Coumadin) 5 mg orally once daily, adjusted based on INR levels.
+                                  Dabigatran (Pradaxa) 150 mg orally twice daily (alternative to warfarin).
+                                  Antihypertensive (if needed):
+
+                                  Lisinopril 10 mg orally once daily to control blood pressure.
+                                  Amlodipine 5 mg orally once daily.
+                                  Statin:
+
+                                  Atorvastatin (Lipitor) 40 mg orally once daily at bedtime to manage cholesterol levels.
+                                  Neuroprotective Agent (optional and under doctor's discretion):
+
+                                  Citicoline 500 mg orally twice daily.
+                                  Thrombolytic Therapy (for acute ischemic stroke, administered in hospital settings):
+
+                                  Alteplase (tPA) 0.9 mg/kg IV (10% as a bolus, the remainder over 60 minutes), administered within 4.5 hours of symptom onset.
+                                </p>
+                              </div>)}
+                            </div> */}
                           </div>
 
-                          {/* Right Section */}
-                          <div className="mb-6">
-                            <h3 className="text-lg font-semibold">Details</h3>
-                            {!seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
-                              <strong>Attended Doctor:</strong>
-                              <p>Dr. John Lee</p><br></br>
-                              <strong>Practice Address:</strong>
-                              <p>Columbia Asia Hospital Setapak</p><br></br>
-                              <strong>Date & Time:</strong>
-                              <p>09/07/2024, 11.26 am</p><br></br>
-                              <strong>Diagnosis:</strong>
-                              <p>Fever</p><br></br>
-                              <strong>Diagnosis Details:</strong>
-                              <p>Diagnosed with fever, likely due to a viral infection, recommended rest, hydration, and antipyretics for symptom management.</p><br></br>
-                              <strong>Medications Prescribed:</strong>
-                              <p>Paracetamol (Panadol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 4,000 mg per day.
-                                Acetaminophen (Tylenol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 3,000 mg per day.
-                                Ibuprofen (Advil, Motrin): 400 mg orally every 4-6 hours as needed for fever. Do not exceed 3,200 mg per day.
-                              </p>
-                            </div>
-                            )}
-
-                            {seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
-                              <strong>Attended Doctor:</strong>
-                              <p>Dr. John Lee</p><br></br>
-                              <strong>Practice Address:</strong>
-                              <p>Columbia Asia Hospital Setapak</p><br></br>
-                              <strong>Date & Time:</strong>
-                              <p>09/07/2024, 11.26 am</p><br></br>
-                              <strong>Diagnosis:</strong>
-                              <p>Stroke</p><br></br>
-                              <strong>Diagnosis Details:</strong>
-                              <p>Diagnosed with stroke, immediate treatment required to restore blood flow to the brain and minimize potential damage, followed by rehabilitation and long-term management</p><br></br>
-                              <strong>Medications Prescribed:</strong>
-                              <p>Antiplatelet Agent:
-
-                                Aspirin 81 mg orally once daily.
-                                Clopidogrel (Plavix) 75 mg orally once daily if the patient is allergic to aspirin.
-                                Anticoagulant (if indicated):
-
-                                Warfarin (Coumadin) 5 mg orally once daily, adjusted based on INR levels.
-                                Dabigatran (Pradaxa) 150 mg orally twice daily (alternative to warfarin).
-                                Antihypertensive (if needed):
-
-                                Lisinopril 10 mg orally once daily to control blood pressure.
-                                Amlodipine 5 mg orally once daily.
-                                Statin:
-
-                                Atorvastatin (Lipitor) 40 mg orally once daily at bedtime to manage cholesterol levels.
-                                Neuroprotective Agent (optional and under doctor's discretion):
-
-                                Citicoline 500 mg orally twice daily.
-                                Thrombolytic Therapy (for acute ischemic stroke, administered in hospital settings):
-
-                                Alteplase (tPA) 0.9 mg/kg IV (10% as a bolus, the remainder over 60 minutes), administered within 4.5 hours of symptom onset.
-                              </p>
-                            </div>)}
-                          </div>
-                        </div>
-
-                        {/* <div className="text-right">
+                          {/* <div className="text-right">
                     <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all duration-300">
                       Save & Create
                     </button>
                   </div> */}
-                      </div>
-                      {/* //========================================End of Patient Database UI*/}
+                        </div>
+                        {/* //========================================End of Patient Database UI*/}
 
-                      <br></br>
-                      {/* <p><strong>Your records are stored here:</strong> 
+                        <br></br>
+                        {/* <p><strong>Your records are stored here:</strong> 
                   <a href="http://localhost:8080/ipfs/QmcJDvi2ext2kwGqny6XCU4nWzw2NXAasuKEFveo7BG49" className="text-blue-500 ml-2">
                     Patient Database
                   </a>
                 </p> */}
-                      {/* <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">View medical records</button> */}
+                        {/* <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">View medical records</button> */}
 
+                      </div>
                     </div>
-                  </div>
-                )}
-                <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 1:</strong></label>
-                <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
-                  <option>-- Please Select --</option>
-                  <option>Covid-19</option>
-                  <option>Influenza</option>
-                  <option>Fever</option>
-                  <option>Cough</option>
-                  <option>Hypertension (High Blood Pressure)</option>
-                  <option>Diabetes Mellitus</option>
-                  <option>Asthma</option>
-                  <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                  <option>Coronary Artery Disease</option>
-                  <option>Congestive Heart Failure</option>
-                  <option>Stroke</option>
-                  <option>Epilepsy</option>
-                  <option>Migraine</option>
-                  <option>Anemia</option>
-                  <option>Pneumonia</option>
-                  <option>Tuberculosis</option>
-                  <option>Chronic Kidney Disease</option>
-                  <option>Osteoarthritis</option>
-                  <option>Rheumatoid Arthritis</option>
-                  <option>Depression</option>
-                  <option>Anxiety Disorder</option>
-                  <option>Bipolar Disorder</option>
-                  <option>Schizophrenia</option>
-                  <option>Hypothyroidism</option>
-                  <option>Hyperthyroidism</option>
-                  <option>Peptic Ulcer Disease</option>
-                  <option>Gastritis</option>
-                  <option>Irritable Bowel Syndrome (IBS)</option>
-                  <option>Crohn's Disease</option>
-                  <option>Ulcerative Colitis</option>
-                  <option>Hepatitis B</option>
-                  <option>Hepatitis C</option>
-                  <option>Human Immunodeficiency Virus (HIV)</option>
-                  <option>Cancer (Specify Type)</option>
-                  <option>Gastroesophageal Reflux Disease (GERD)</option>
-                  <option>Urinary Tract Infection (UTI)</option>
-                  <option>Skin Infection (e.g., Cellulitis)</option>
-                  <option>Psoriasis</option>
-                  <option>Eczema</option>
-                  <option>Allergic Rhinitis</option>
-                  <option>Sinusitis</option>
-                  <option>Otitis Media (Middle Ear Infection)</option>
-                  <option>Bronchitis</option>
-                  <option>Obesity</option>
+                  )}
+                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 1:</strong></label>
+                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
+                    <option>-- Please Select --</option>
+                    <option>Covid-19</option>
+                    <option>Influenza</option>
+                    <option>Fever</option>
+                    <option>Cough</option>
+                    <option>Hypertension (High Blood Pressure)</option>
+                    <option>Diabetes Mellitus</option>
+                    <option>Asthma</option>
+                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
+                    <option>Coronary Artery Disease</option>
+                    <option>Congestive Heart Failure</option>
+                    <option>Stroke</option>
+                    <option>Epilepsy</option>
+                    <option>Migraine</option>
+                    <option>Anemia</option>
+                    <option>Pneumonia</option>
+                    <option>Tuberculosis</option>
+                    <option>Chronic Kidney Disease</option>
+                    <option>Osteoarthritis</option>
+                    <option>Rheumatoid Arthritis</option>
+                    <option>Depression</option>
+                    <option>Anxiety Disorder</option>
+                    <option>Bipolar Disorder</option>
+                    <option>Schizophrenia</option>
+                    <option>Hypothyroidism</option>
+                    <option>Hyperthyroidism</option>
+                    <option>Peptic Ulcer Disease</option>
+                    <option>Gastritis</option>
+                    <option>Irritable Bowel Syndrome (IBS)</option>
+                    <option>Crohn's Disease</option>
+                    <option>Ulcerative Colitis</option>
+                    <option>Hepatitis B</option>
+                    <option>Hepatitis C</option>
+                    <option>Human Immunodeficiency Virus (HIV)</option>
+                    <option>Cancer (Specify Type)</option>
+                    <option>Gastroesophageal Reflux Disease (GERD)</option>
+                    <option>Urinary Tract Infection (UTI)</option>
+                    <option>Skin Infection (e.g., Cellulitis)</option>
+                    <option>Psoriasis</option>
+                    <option>Eczema</option>
+                    <option>Allergic Rhinitis</option>
+                    <option>Sinusitis</option>
+                    <option>Otitis Media (Middle Ear Infection)</option>
+                    <option>Bronchitis</option>
+                    <option>Obesity</option>
 
-                </select>
+                  </select>
 
-                <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 2 (optional):</strong></label>
-                <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
-                  <option>-- Please Select --</option>
-                  <option>Covid-19</option>
-                  <option>Influenza</option>
-                  <option>Fever</option>
-                  <option>Cough</option>
-                  <option>Hypertension (High Blood Pressure)</option>
-                  <option>Diabetes Mellitus</option>
-                  <option>Asthma</option>
-                  <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                  <option>Coronary Artery Disease</option>
-                  <option>Congestive Heart Failure</option>
-                  <option>Stroke</option>
-                  <option>Epilepsy</option>
-                  <option>Migraine</option>
-                  <option>Anemia</option>
-                  <option>Pneumonia</option>
-                  <option>Tuberculosis</option>
-                  <option>Chronic Kidney Disease</option>
-                  <option>Osteoarthritis</option>
-                  <option>Rheumatoid Arthritis</option>
-                  <option>Depression</option>
-                  <option>Anxiety Disorder</option>
-                  <option>Bipolar Disorder</option>
-                  <option>Schizophrenia</option>
-                  <option>Hypothyroidism</option>
-                  <option>Hyperthyroidism</option>
-                  <option>Peptic Ulcer Disease</option>
-                  <option>Gastritis</option>
-                  <option>Irritable Bowel Syndrome (IBS)</option>
-                  <option>Crohn's Disease</option>
-                  <option>Ulcerative Colitis</option>
-                  <option>Hepatitis B</option>
-                  <option>Hepatitis C</option>
-                  <option>Human Immunodeficiency Virus (HIV)</option>
-                  <option>Cancer (Specify Type)</option>
-                  <option>Gastroesophageal Reflux Disease (GERD)</option>
-                  <option>Urinary Tract Infection (UTI)</option>
-                  <option>Skin Infection (e.g., Cellulitis)</option>
-                  <option>Psoriasis</option>
-                  <option>Eczema</option>
-                  <option>Allergic Rhinitis</option>
-                  <option>Sinusitis</option>
-                  <option>Otitis Media (Middle Ear Infection)</option>
-                  <option>Bronchitis</option>
-                  <option>Obesity</option>
+                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 2 (optional):</strong></label>
+                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
+                    <option>-- Please Select --</option>
+                    <option>Covid-19</option>
+                    <option>Influenza</option>
+                    <option>Fever</option>
+                    <option>Cough</option>
+                    <option>Hypertension (High Blood Pressure)</option>
+                    <option>Diabetes Mellitus</option>
+                    <option>Asthma</option>
+                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
+                    <option>Coronary Artery Disease</option>
+                    <option>Congestive Heart Failure</option>
+                    <option>Stroke</option>
+                    <option>Epilepsy</option>
+                    <option>Migraine</option>
+                    <option>Anemia</option>
+                    <option>Pneumonia</option>
+                    <option>Tuberculosis</option>
+                    <option>Chronic Kidney Disease</option>
+                    <option>Osteoarthritis</option>
+                    <option>Rheumatoid Arthritis</option>
+                    <option>Depression</option>
+                    <option>Anxiety Disorder</option>
+                    <option>Bipolar Disorder</option>
+                    <option>Schizophrenia</option>
+                    <option>Hypothyroidism</option>
+                    <option>Hyperthyroidism</option>
+                    <option>Peptic Ulcer Disease</option>
+                    <option>Gastritis</option>
+                    <option>Irritable Bowel Syndrome (IBS)</option>
+                    <option>Crohn's Disease</option>
+                    <option>Ulcerative Colitis</option>
+                    <option>Hepatitis B</option>
+                    <option>Hepatitis C</option>
+                    <option>Human Immunodeficiency Virus (HIV)</option>
+                    <option>Cancer (Specify Type)</option>
+                    <option>Gastroesophageal Reflux Disease (GERD)</option>
+                    <option>Urinary Tract Infection (UTI)</option>
+                    <option>Skin Infection (e.g., Cellulitis)</option>
+                    <option>Psoriasis</option>
+                    <option>Eczema</option>
+                    <option>Allergic Rhinitis</option>
+                    <option>Sinusitis</option>
+                    <option>Otitis Media (Middle Ear Infection)</option>
+                    <option>Bronchitis</option>
+                    <option>Obesity</option>
 
-                </select>
+                  </select>
 
-                <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 3 (optional):</strong></label>
-                <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
-                  <option>-- Please Select --</option>
-                  <option>Covid-19</option>
-                  <option>Influenza</option>
-                  <option>Fever</option>
-                  <option>Cough</option>
-                  <option>Hypertension (High Blood Pressure)</option>
-                  <option>Diabetes Mellitus</option>
-                  <option>Asthma</option>
-                  <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                  <option>Coronary Artery Disease</option>
-                  <option>Congestive Heart Failure</option>
-                  <option>Stroke</option>
-                  <option>Epilepsy</option>
-                  <option>Migraine</option>
-                  <option>Anemia</option>
-                  <option>Pneumonia</option>
-                  <option>Tuberculosis</option>
-                  <option>Chronic Kidney Disease</option>
-                  <option>Osteoarthritis</option>
-                  <option>Rheumatoid Arthritis</option>
-                  <option>Depression</option>
-                  <option>Anxiety Disorder</option>
-                  <option>Bipolar Disorder</option>
-                  <option>Schizophrenia</option>
-                  <option>Hypothyroidism</option>
-                  <option>Hyperthyroidism</option>
-                  <option>Peptic Ulcer Disease</option>
-                  <option>Gastritis</option>
-                  <option>Irritable Bowel Syndrome (IBS)</option>
-                  <option>Crohn's Disease</option>
-                  <option>Ulcerative Colitis</option>
-                  <option>Hepatitis B</option>
-                  <option>Hepatitis C</option>
-                  <option>Human Immunodeficiency Virus (HIV)</option>
-                  <option>Cancer (Specify Type)</option>
-                  <option>Gastroesophageal Reflux Disease (GERD)</option>
-                  <option>Urinary Tract Infection (UTI)</option>
-                  <option>Skin Infection (e.g., Cellulitis)</option>
-                  <option>Psoriasis</option>
-                  <option>Eczema</option>
-                  <option>Allergic Rhinitis</option>
-                  <option>Sinusitis</option>
-                  <option>Otitis Media (Middle Ear Infection)</option>
-                  <option>Bronchitis</option>
-                  <option>Obesity</option>
+                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 3 (optional):</strong></label>
+                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
+                    <option>-- Please Select --</option>
+                    <option>Covid-19</option>
+                    <option>Influenza</option>
+                    <option>Fever</option>
+                    <option>Cough</option>
+                    <option>Hypertension (High Blood Pressure)</option>
+                    <option>Diabetes Mellitus</option>
+                    <option>Asthma</option>
+                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
+                    <option>Coronary Artery Disease</option>
+                    <option>Congestive Heart Failure</option>
+                    <option>Stroke</option>
+                    <option>Epilepsy</option>
+                    <option>Migraine</option>
+                    <option>Anemia</option>
+                    <option>Pneumonia</option>
+                    <option>Tuberculosis</option>
+                    <option>Chronic Kidney Disease</option>
+                    <option>Osteoarthritis</option>
+                    <option>Rheumatoid Arthritis</option>
+                    <option>Depression</option>
+                    <option>Anxiety Disorder</option>
+                    <option>Bipolar Disorder</option>
+                    <option>Schizophrenia</option>
+                    <option>Hypothyroidism</option>
+                    <option>Hyperthyroidism</option>
+                    <option>Peptic Ulcer Disease</option>
+                    <option>Gastritis</option>
+                    <option>Irritable Bowel Syndrome (IBS)</option>
+                    <option>Crohn's Disease</option>
+                    <option>Ulcerative Colitis</option>
+                    <option>Hepatitis B</option>
+                    <option>Hepatitis C</option>
+                    <option>Human Immunodeficiency Virus (HIV)</option>
+                    <option>Cancer (Specify Type)</option>
+                    <option>Gastroesophageal Reflux Disease (GERD)</option>
+                    <option>Urinary Tract Infection (UTI)</option>
+                    <option>Skin Infection (e.g., Cellulitis)</option>
+                    <option>Psoriasis</option>
+                    <option>Eczema</option>
+                    <option>Allergic Rhinitis</option>
+                    <option>Sinusitis</option>
+                    <option>Otitis Media (Middle Ear Infection)</option>
+                    <option>Bronchitis</option>
+                    <option>Obesity</option>
 
-                </select>
+                  </select>
 
-                <label className="block mb-2" htmlFor="details"><strong>New Diagnosis:</strong></label>
-                <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
+                  <label className="block mb-2" htmlFor="details"><strong>New Diagnosis:</strong></label>
+                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
 
-                <label className="block mb-2" htmlFor="details"><strong>Diagnosis Details:</strong></label>
-                <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
+                  <label className="block mb-2" htmlFor="details"><strong>Diagnosis Details:</strong></label>
+                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
 
-                <label className="block mb-2" htmlFor="details"><strong>Medification Prescription:</strong></label>
-                <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter medification Prescription"></textarea>
+                  <label className="block mb-2" htmlFor="details"><strong>Medification Prescription:</strong></label>
+                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter medification Prescription"></textarea>
 
-                <label for="birthday"><strong>Consultation Date:</strong></label>
-                <input type="date" id="birthday" name="birthday" className="p-2 border rounded-md w-full mb-4"></input>
+                  <label for="birthday"><strong>Consultation Date:</strong></label>
+                  <input type="date" id="birthday" name="birthday" className="p-2 border rounded-md w-full mb-4"></input>
 
-                <button onClick={handleSavedAllowAccess} className="bg-blue-500 text-white px-4 py-2 rounded-md">
-                  Record new Medical Record
-                </button>
-              </div>
-            )}
+                  <button onClick={handleSavedAllowAccess} className="bg-blue-500 text-white px-4 py-2 rounded-md">
+                    Record new Medical Record
+                  </button>
+                </div>
+              )}
+            </Dialog>
           </div>
         </div>
       </div>
