@@ -35,27 +35,26 @@ export default function Home() {
     getPatientWithAccess()
   }, [])
 
-  async function getPatientWithAccess() {
+  const getPatientWithAccess = async () => {
     const q = query(collection(db, "patients"));
 
     let doctorObject = []
     let patientList = []
 
     const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((patient) => {
 
-      let patientData = doc.data()
+      let patientData = patient.data()
 
       doctorObject.push(patientData.doctorAccess)
 
       let doesDoctorHaveAccess = doctorObject[0].some((doctor) => doctor.walletAddress == loggedInUser.walletAddress)
 
       if (doesDoctorHaveAccess) {
-        patientList.push()
+        patientList.push({ email: patientData.email, name: patientData.name, walletAddress: patientData.walletAddress })
       }
 
-      patientList.push({ email: patientData.email, name: patientData.name, walletAddress: patientData.walletAddress })
-
+      doctorObject = []
     })
     setPatientWithAccess(patientList)
   }

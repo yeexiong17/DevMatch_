@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import SubNav from '../components/SubNav/SubNav'
 
-import { query, collection, db, getDocs, updateDoc, arrayUnion, doc } from '../../firebase.config'
+import { query, collection, db, getDocs, getDoc, updateDoc, arrayUnion, doc } from '../../firebase.config'
 
 import { useMyContext } from '../layout'
 
@@ -37,20 +37,25 @@ export default function Home() {
     setDoctorList(doctorList.filter(doctor => !accessDoctor.some(accessDoctor => accessDoctor.walletAddress === doctor.walletAddress)))
   }
 
-  // Get All Doctors That Have Access
-  async function getAccessDoctor() {
-    const q = query(collection(db, "patients"))
-
-    const querySnapshot = await getDocs(q)
-    querySnapshot.forEach((doc) => {
-      let patientData = doc.data()
-      setAccessDoctor(patientData.doctorAccess)
-    })
-  }
 
   useEffect(() => {
-    console.log("Doctor Access Selection:", doctorOption)
-  }, [doctorOption])
+    console.log("Doctor Access Selection:", accessDoctor)
+  }, [accessDoctor])
+
+  // Get All Doctors That Have Access
+  const getAccessDoctor = async () => {
+    const q = doc(db, "patients", loggedInUser.email)
+
+    const docSnapshot = await getDoc(q)
+
+    if (docSnapshot.exists()) {
+      let patientData = docSnapshot.data()
+      setAccessDoctor(patientData.doctorAccess)
+    }
+    else {
+      alert('User Not Found!')
+    }
+  }
 
   const handleRemoveAccess = async (doctorToRemove) => {
     const removedDoctorArray = accessDoctor.filter((doctor) => doctor.walletAddress != doctorToRemove.walletAddress)

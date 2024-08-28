@@ -26,14 +26,12 @@ const Login = ({ role }) => {
         signInWithEmailAndPassword(auth, email, walletPassword)
             .then(async (userCredential) => {
                 const user = userCredential.user
-                console.log(user.email)
 
                 // Get User Info From Firebase
                 const docRef = doc(db, role == 'Patient' ? 'patients' : 'doctors', user.email);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    console.log("Document data:", docSnap.data());
                     let userData = docSnap.data()
 
                     toast.current.show({ severity: 'success', summary: 'Success', detail: `Wallet: ${userData.walletAddress} Logged In Successfully` })
