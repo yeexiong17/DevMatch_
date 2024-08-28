@@ -3,19 +3,33 @@ import { useState, useEffect } from "react"
 import Link from 'next/link'
 import { Dialog } from 'primereact/dialog';
 
-import { query, collection, db, getDocs, updateDoc, arrayUnion, doc } from '../../firebase.config'
+import { query, collection, db, getDocs } from '../../firebase.config'
 import { useMyContext } from '../layout'
+import Option from '../../Option'
 
 export default function Home() {
 
-  const { logIn, logOut, isLoggedIn, loggedInUser, fetchSession } = useMyContext()
+  const { logIn, isLoggedIn, loggedInUser, fetchSession } = useMyContext()
 
+  // List of patients that doctor have access to
   const [patientWithAccess, setPatientWithAccess] = useState(null)
+
   const [isRecordVisible, setIsRecordVisible] = useState(false)
   const [isPatientRecordVisible, setIsPatientRecordVisible] = useState(false)
-  const [isSaved, setIsSavedAllowed] = useState(false)
-  const [seeDetails, setSeeDetailsAllowed] = useState(false)
-  const [visible, setVisible] = useState(false)
+
+  // New Medical Record Input Value
+  const [diagnosis, setDiagnosis] = useState("")
+  const [details, setDetails] = useState("")
+  const [prescription, setPrescription] = useState("")
+
+  // If dialog is visible or not 
+  const [dialogVisible, setDialogVisible] = useState(false)
+
+  // Selected Patient's Personal Information
+  const [currentPatient, setCurrentPatient] = useState(null)
+
+  // Selected Patient's Medical Records
+  const [currentPatientRecord, setCurrentPatientRecord] = useState([])
 
   useEffect(() => {
     getPatientWithAccess()
@@ -50,12 +64,58 @@ export default function Home() {
     setIsPatientRecordVisible(!isPatientRecordVisible)
   }
 
-  const handleSavedAllowAccess = () => {
-    setIsSavedAllowed(true)
-  }
+  const handleNewMedicalRecord = async () => {
 
-  const handleSeeDetailsAllowAccess = () => {
-    setSeeDetailsAllowed(true)
+    console.log({ diagnosis, details, prescription, date: new Date().toLocaleString().replace(',', '') })
+
+    if (!diagnosis || !details || !prescription) return alert('Please Fill In All Required Fields!')
+
+    let body = {
+      wallet_address: loggedInUser.walletAddress,
+      contract_address: "0xa965aDE1D9Ba5Ba99E8e2Fd80864f98abb39C1C2",
+      metadata: {
+        patient: currentPatient.walletAddress,
+        diagnosis: [diagnosis],
+        details: details,
+        prescription: prescription,
+        consultation_date: new Date().toLocaleString().replace(',', '')
+      },
+      tag_id: [13],
+      callback_url: 'https://postman-echo.com/post?'
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/audit/audit`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: {
+          client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
+          client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error("Error Creating New Medical Record")
+      }
+
+      try {
+        setCurrentPatientRecord([])
+        setCurrentPatientRecord(await getPatientRecord(currentPatient.walletAddress))
+
+        alert("New Medical Record Created Successfully")
+      } catch (error) {
+        console.error('Error fetching patient record:', error)
+      }
+      finally {
+        setDiagnosis("")
+        setDetails("")
+        setPrescription("")
+      }
+
+    } catch (error) {
+      alert(error)
+    }
   }
 
   const getPatientRecord = async (walletAddress) => {
@@ -67,7 +127,7 @@ export default function Home() {
       headers: {
         client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
         client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       }
     })
 
@@ -91,15 +151,30 @@ export default function Home() {
 
     console.log(patientData)
 
+    return patientData
     // const metadata = JSON.parse(result.result[0].metadata)
-
-
   }
 
-  const toggleRecordVisibility = (patientWalletAddress) => {
-    setVisible(true)
+  const toggleDialogVisibility = async (patient) => {
+    setDialogVisible(true)
     setIsRecordVisible(!isRecordVisible)
-    getPatientRecord(patientWalletAddress)
+    setCurrentPatient(patient)
+
+    try {
+      setCurrentPatientRecord(await getPatientRecord(patient.walletAddress))
+    } catch (error) {
+      console.error('Error fetching patient record:', error)
+    }
+  }
+
+  const onDialogClose = () => {
+    if (!dialogVisible) return
+
+    setDialogVisible(false)
+    setIsRecordVisible(false)
+    setIsPatientRecordVisible(false)
+
+    setCurrentPatient(null)
   }
 
   return (
@@ -166,7 +241,7 @@ export default function Home() {
               <tbody>
                 <tr>
                   {/* change here  */}
-                  <td className="py-2 px-4 border-b">Dr Lim Zi Xian</td>
+                  <td className="py-2 px-4 border-b">Dr {loggedInUser.name}</td>
                   <td className="py-2 px-4 border-b">Male</td>
                   <td className="py-2 px-4 border-b">55</td>
                   <td className="py-2 px-4 border-b">
@@ -196,14 +271,14 @@ export default function Home() {
                 {patientWithAccess && patientWithAccess.length > 0 ? (
                   patientWithAccess.map((patient, index) => (
                     <tr key={index}>
-                      <td className="py-2 px-4 border-b">Dr {patient.name}</td>
+                      <td className="py-2 px-4 border-b">{patient.name}</td>
                       <td className="py-2 px-4 border-b">{patient.walletAddress}</td>
                       <td className="py-2 px-4 border-b">
                         <button
-                          onClick={() => toggleRecordVisibility(patient.walletAddress)}
-                          className={`px-4 py-2 rounded-md ${isRecordVisible ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}
+                          onClick={() => toggleDialogVisibility(patient)}
+                          className={`px-4 py-2 rounded-md bg-blue-500 text-white`}
                         >
-                          {isRecordVisible ? 'Hide Records' : 'Edit Records'}
+                          Manage Records
                         </button>
                       </td>
                     </tr>
@@ -217,7 +292,7 @@ export default function Home() {
             </table>
 
             {/* Popup For Viewing Patient Medical Record */}
-            <Dialog className="w-full lg:w-9/12" header="Patient's Record" visible={visible} onHide={() => { if (!visible) return; setVisible(false); }} draggable={false} resizable={false}>
+            <Dialog className="w-full lg:w-9/12" header="Patient's Record" visible={dialogVisible} onHide={() => onDialogClose()} draggable={false} resizable={false}>
               {isRecordVisible && (
                 <div className="p-4 bg-white rounded-md border border-gray-300 mb-4">
                   <table className="min-w-full bg-white border border-gray-300 rounded-md mb-4">
@@ -230,14 +305,14 @@ export default function Home() {
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-2 px-4 border-b">Leong Ee Mun</td>
-                        <td className="py-2 px-4 border-b">0xa2B6BB2B7811Dbe3af0b348D1c164098C914e075</td>
+                        <td className="py-2 px-4 border-b">{currentPatient.name}</td>
+                        <td className="py-2 px-4 border-b">{currentPatient.walletAddress.slice(0, 6)}...{currentPatient.walletAddress.slice(-4)}</td>
                         <td className="py-2 px-4 border-b">
                           <button
                             onClick={togglePatientRecordVisibility}
                             className={`px-4 py-2 rounded-md ${isPatientRecordVisible ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}
                           >
-                            {isPatientRecordVisible ? 'Hide Patient Past Records' : 'View Patient Past Records'}
+                            {isPatientRecordVisible ? 'Hide Patient Past Records' : 'View Past Records'}
                           </button>
                         </td>
                       </tr>
@@ -252,10 +327,9 @@ export default function Home() {
                         <div className="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-md">
                           <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center">
-                              <img src="https://via.placeholder.com/150/000000/FFFFFF/?text=Anon" alt="Annoymous Patient" className="w-16 h-16 rounded-full mr-4" />
                               <div>
                                 {/* TODO: linking here */}
-                                <h2 className="text-2xl font-bold">Leong Ee Mun</h2>
+                                <h2 className="text-2xl font-bold">{currentPatient.name}</h2>
                                 <p className="text-gray-500">Tel: +6012-772 6269</p>
                               </div>
                             </div>
@@ -271,10 +345,6 @@ export default function Home() {
                               <p className="text-lg"><strong>Allergies</strong></p>
                               <p>Penicillin</p>
                             </div>
-                            <div>
-                              <p className="text-lg"><strong>Medical problems</strong></p>
-                              <p>Asthma</p>
-                            </div>
                           </div>
 
                           <div className="border-b border-gray-200 mb-6">
@@ -289,58 +359,28 @@ export default function Home() {
                               <div className="mb-6">
                                 <h3 className="text-lg font-semibold">Medical History</h3>
                                 <div className="p-4 bg-gray-100 rounded-md mb-4 ">
-                                  <div onClick={handleSeeDetailsAllowAccess} style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                                    {/* add new div content when clicked */}
-                                    {isSaved && (<div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                      <div>
-                                        <p><strong>Diagnosis: </strong>Stroke</p>
-                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
-                                      </div>
-                                      <div>
-                                        <p>18/08/2024</p>
-                                      </div>
-                                    </div>
-                                    )}
-                                    {/* 1 div content  */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                      <div>
-                                        <p><strong>Diagnosis: </strong>Fever</p>
-                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
-                                      </div>
-                                      <div>
-                                        <p>09/07/2024</p>
-                                      </div>
-                                    </div>
-                                    {/* 2 div content  */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                      <div>
-                                        <p><strong>Diagnosis: </strong>Covid-19</p>
-                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Lim, Dr Lim Clinic</p>
-                                      </div>
-                                      <div>
-                                        <p>07/11/2021</p>
-                                      </div>
-                                    </div>
-                                    {/* 3 div content  */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                      <div>
-                                        <p><strong>Diagnosis: </strong>Discharge letter</p>
-                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Gleneagles Hospital Kuala Lumpur</p>
-                                      </div>
-                                      <div>
-                                        <p>21/10/2017</p>
-                                      </div>
-                                    </div>
-                                    {/* 4 div content  */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                                      <div>
-                                        <p><strong>Diagnosis: </strong>Influenza A virus</p>
-                                        <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Kuala Lumpur Hospital</p>
-                                      </div>
-                                      <div>
-                                        <p>16/10/2017</p>
-                                      </div>
-                                    </div>
+                                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                    {
+                                      currentPatientRecord.length > 0 ? (
+                                        currentPatientRecord.map((record, index) => (
+                                          <div
+                                            key={index}
+                                            style={{ display: 'flex', justifyContent: 'space-between' }}
+                                            className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300"
+                                          >
+                                            <div>
+                                              <p><strong>Diagnosis: </strong>{record.diagnosis.join(', ')}</p>
+                                              <p style={{ fontStyle: 'italic', color: '#808080' }}>Dr. John, Columbia Asia Hospital Setapak</p>
+                                            </div>
+                                            <div>
+                                              <p>{record.consultation_date}</p>
+                                            </div>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p>No Past Medical Record Available</p>
+                                      )
+                                    }
                                   </div>
                                 </div>
                               </div>
@@ -426,169 +466,19 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 1:</strong></label>
-                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
+                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis:</strong></label>
+                  <select id="diagnosis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} className="p-2 border rounded-md w-full mb-4">
                     <option>-- Please Select --</option>
-                    <option>Covid-19</option>
-                    <option>Influenza</option>
-                    <option>Fever</option>
-                    <option>Cough</option>
-                    <option>Hypertension (High Blood Pressure)</option>
-                    <option>Diabetes Mellitus</option>
-                    <option>Asthma</option>
-                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                    <option>Coronary Artery Disease</option>
-                    <option>Congestive Heart Failure</option>
-                    <option>Stroke</option>
-                    <option>Epilepsy</option>
-                    <option>Migraine</option>
-                    <option>Anemia</option>
-                    <option>Pneumonia</option>
-                    <option>Tuberculosis</option>
-                    <option>Chronic Kidney Disease</option>
-                    <option>Osteoarthritis</option>
-                    <option>Rheumatoid Arthritis</option>
-                    <option>Depression</option>
-                    <option>Anxiety Disorder</option>
-                    <option>Bipolar Disorder</option>
-                    <option>Schizophrenia</option>
-                    <option>Hypothyroidism</option>
-                    <option>Hyperthyroidism</option>
-                    <option>Peptic Ulcer Disease</option>
-                    <option>Gastritis</option>
-                    <option>Irritable Bowel Syndrome (IBS)</option>
-                    <option>Crohn's Disease</option>
-                    <option>Ulcerative Colitis</option>
-                    <option>Hepatitis B</option>
-                    <option>Hepatitis C</option>
-                    <option>Human Immunodeficiency Virus (HIV)</option>
-                    <option>Cancer (Specify Type)</option>
-                    <option>Gastroesophageal Reflux Disease (GERD)</option>
-                    <option>Urinary Tract Infection (UTI)</option>
-                    <option>Skin Infection (e.g., Cellulitis)</option>
-                    <option>Psoriasis</option>
-                    <option>Eczema</option>
-                    <option>Allergic Rhinitis</option>
-                    <option>Sinusitis</option>
-                    <option>Otitis Media (Middle Ear Infection)</option>
-                    <option>Bronchitis</option>
-                    <option>Obesity</option>
-
+                    <Option />
                   </select>
-
-                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 2 (optional):</strong></label>
-                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
-                    <option>-- Please Select --</option>
-                    <option>Covid-19</option>
-                    <option>Influenza</option>
-                    <option>Fever</option>
-                    <option>Cough</option>
-                    <option>Hypertension (High Blood Pressure)</option>
-                    <option>Diabetes Mellitus</option>
-                    <option>Asthma</option>
-                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                    <option>Coronary Artery Disease</option>
-                    <option>Congestive Heart Failure</option>
-                    <option>Stroke</option>
-                    <option>Epilepsy</option>
-                    <option>Migraine</option>
-                    <option>Anemia</option>
-                    <option>Pneumonia</option>
-                    <option>Tuberculosis</option>
-                    <option>Chronic Kidney Disease</option>
-                    <option>Osteoarthritis</option>
-                    <option>Rheumatoid Arthritis</option>
-                    <option>Depression</option>
-                    <option>Anxiety Disorder</option>
-                    <option>Bipolar Disorder</option>
-                    <option>Schizophrenia</option>
-                    <option>Hypothyroidism</option>
-                    <option>Hyperthyroidism</option>
-                    <option>Peptic Ulcer Disease</option>
-                    <option>Gastritis</option>
-                    <option>Irritable Bowel Syndrome (IBS)</option>
-                    <option>Crohn's Disease</option>
-                    <option>Ulcerative Colitis</option>
-                    <option>Hepatitis B</option>
-                    <option>Hepatitis C</option>
-                    <option>Human Immunodeficiency Virus (HIV)</option>
-                    <option>Cancer (Specify Type)</option>
-                    <option>Gastroesophageal Reflux Disease (GERD)</option>
-                    <option>Urinary Tract Infection (UTI)</option>
-                    <option>Skin Infection (e.g., Cellulitis)</option>
-                    <option>Psoriasis</option>
-                    <option>Eczema</option>
-                    <option>Allergic Rhinitis</option>
-                    <option>Sinusitis</option>
-                    <option>Otitis Media (Middle Ear Infection)</option>
-                    <option>Bronchitis</option>
-                    <option>Obesity</option>
-
-                  </select>
-
-                  <label className="block mb-2" htmlFor="diagnosis"><strong>Diagnosis 3 (optional):</strong></label>
-                  <select id="diagnosis" className="p-2 border rounded-md w-full mb-4">
-                    <option>-- Please Select --</option>
-                    <option>Covid-19</option>
-                    <option>Influenza</option>
-                    <option>Fever</option>
-                    <option>Cough</option>
-                    <option>Hypertension (High Blood Pressure)</option>
-                    <option>Diabetes Mellitus</option>
-                    <option>Asthma</option>
-                    <option>Chronic Obstructive Pulmonary Disease (COPD)</option>
-                    <option>Coronary Artery Disease</option>
-                    <option>Congestive Heart Failure</option>
-                    <option>Stroke</option>
-                    <option>Epilepsy</option>
-                    <option>Migraine</option>
-                    <option>Anemia</option>
-                    <option>Pneumonia</option>
-                    <option>Tuberculosis</option>
-                    <option>Chronic Kidney Disease</option>
-                    <option>Osteoarthritis</option>
-                    <option>Rheumatoid Arthritis</option>
-                    <option>Depression</option>
-                    <option>Anxiety Disorder</option>
-                    <option>Bipolar Disorder</option>
-                    <option>Schizophrenia</option>
-                    <option>Hypothyroidism</option>
-                    <option>Hyperthyroidism</option>
-                    <option>Peptic Ulcer Disease</option>
-                    <option>Gastritis</option>
-                    <option>Irritable Bowel Syndrome (IBS)</option>
-                    <option>Crohn's Disease</option>
-                    <option>Ulcerative Colitis</option>
-                    <option>Hepatitis B</option>
-                    <option>Hepatitis C</option>
-                    <option>Human Immunodeficiency Virus (HIV)</option>
-                    <option>Cancer (Specify Type)</option>
-                    <option>Gastroesophageal Reflux Disease (GERD)</option>
-                    <option>Urinary Tract Infection (UTI)</option>
-                    <option>Skin Infection (e.g., Cellulitis)</option>
-                    <option>Psoriasis</option>
-                    <option>Eczema</option>
-                    <option>Allergic Rhinitis</option>
-                    <option>Sinusitis</option>
-                    <option>Otitis Media (Middle Ear Infection)</option>
-                    <option>Bronchitis</option>
-                    <option>Obesity</option>
-
-                  </select>
-
-                  <label className="block mb-2" htmlFor="details"><strong>New Diagnosis:</strong></label>
-                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
 
                   <label className="block mb-2" htmlFor="details"><strong>Diagnosis Details:</strong></label>
-                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
+                  <textarea id="details" value={details} onChange={(e) => setDetails(e.target.value)} className="p-2 border rounded-md w-full mb-4" placeholder="Enter details to be added"></textarea>
 
-                  <label className="block mb-2" htmlFor="details"><strong>Medification Prescription:</strong></label>
-                  <textarea id="details" className="p-2 border rounded-md w-full mb-4" placeholder="Enter medification Prescription"></textarea>
+                  <label className="block mb-2" htmlFor="prescription"><strong>Medification Prescription:</strong></label>
+                  <textarea id="prescription" value={prescription} onChange={(e) => setPrescription(e.target.value)} className="p-2 border rounded-md w-full mb-4" placeholder="Enter medification Prescription"></textarea>
 
-                  <label for="birthday"><strong>Consultation Date:</strong></label>
-                  <input type="date" id="birthday" name="birthday" className="p-2 border rounded-md w-full mb-4"></input>
-
-                  <button onClick={handleSavedAllowAccess} className="bg-blue-500 text-white px-4 py-2 rounded-md">
+                  <button onClick={handleNewMedicalRecord} className="bg-blue-500 text-white px-4 py-2 rounded-md">
                     Record new Medical Record
                   </button>
                 </div>
