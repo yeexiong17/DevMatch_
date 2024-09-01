@@ -6,6 +6,7 @@ import { Dialog } from 'primereact/dialog';
 import { query, collection, db, getDocs } from '../../firebase.config'
 import { useMyContext } from '../layout'
 import Option from '../../Option'
+import moment from "moment";
 
 export default function Home() {
 
@@ -77,7 +78,7 @@ export default function Home() {
         diagnosis: [diagnosis],
         details: details,
         prescription: prescription,
-        consultation_date: new Date().toLocaleString().replace(',', '')
+        consultation_date: moment.format('DD/MM/YYYY hh:mm:ss A')
       },
       tag_id: [13],
       callback_url: 'https://postman-echo.com/post?'

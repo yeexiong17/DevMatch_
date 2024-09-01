@@ -25,6 +25,10 @@ export default function Home() {
     console.log(accessDoctor)
   }, [accessDoctor])
 
+  useEffect(() => {
+    console.log("Doctor Access Selection:", accessDoctor)
+  }, [accessDoctor])
+
   async function getAllDoctors() {
     const q = query(collection(db, "doctors"));
 
@@ -38,9 +42,6 @@ export default function Home() {
   }
 
 
-  useEffect(() => {
-    console.log("Doctor Access Selection:", accessDoctor)
-  }, [accessDoctor])
 
   // Get All Doctors That Have Access
   const getAccessDoctor = async () => {
