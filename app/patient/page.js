@@ -14,9 +14,11 @@ export default function Home() {
   const [doctorOption, setDoctorOption] = useState(null)
   const [isAccessAllowed, setIsAccessAllowed] = useState(false)
   const [accessDoctor, setAccessDoctor] = useState([])
-
+  const [currentPatientRecord, setCurrentPatientRecord] = useState([])
+  const [selectedRecordDetails, setSelectedRecordDetails] = useState(null)
 
   useEffect(() => {
+    triggerGetPatientRecord()
     getAccessDoctor()
   }, [])
 
@@ -28,6 +30,10 @@ export default function Home() {
   useEffect(() => {
     console.log("Doctor Access Selection:", accessDoctor)
   }, [accessDoctor])
+
+  const triggerGetPatientRecord = async () => {
+    setCurrentPatientRecord(await getPatientRecord(loggedInUser.walletAddress))
+  }
 
   async function getAllDoctors() {
     const q = query(collection(db, "doctors"));
@@ -41,7 +47,46 @@ export default function Home() {
     setDoctorList(doctorList.filter(doctor => !accessDoctor.some(accessDoctor => accessDoctor.walletAddress === doctor.walletAddress)))
   }
 
+  const getPatientRecord = async (walletAddress) => {
 
+    let patientData = null
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/audit/audit?tag=13`, {
+      method: 'GET',
+      headers: {
+        client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
+        client_secret: process.env.NEXT_PUBLIC_CLIENT_SECRET,
+        "Content-Type": "application/json"
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed To Get Patient Record")
+    }
+
+    const result = await response.json()
+
+    patientData = result.result.filter((record) => {
+      let metadata = record.metadata
+      let parseMetadata = JSON.parse(metadata)
+
+      return parseMetadata.patient == walletAddress
+    })
+      .map((record) => {
+        const parsedData = JSON.parse(record.metadata)
+
+        return parsedData
+      })
+
+    console.log(patientData)
+
+    return patientData
+    // const metadata = JSON.parse(result.result[0].metadata)
+  }
+
+  const onSelectRecord = (index) => {
+    setSelectedRecordDetails(currentPatientRecord[index])
+  }
 
   // Get All Doctors That Have Access
   const getAccessDoctor = async () => {
@@ -108,7 +153,6 @@ export default function Home() {
             <div className="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-md">
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center">
-                  <img src="https://via.placeholder.com/150/000000/FFFFFF/?text=Anon" alt="Annoymous Patient" className="w-16 h-16 rounded-full mr-4" />
                   <div>
                     {/* TODO: linking here */}
                     <h2 className="text-2xl font-bold">Leong Ee Mun</h2>
@@ -145,48 +189,31 @@ export default function Home() {
                 <div className="col-span-1 lg:col-span-2">
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold">Medical History</h3>
-                    <div className="p-4 bg-gray-100 rounded-md mb-4 ">
+                    <div className="p-4 bg-gray-100 rounded-md mb-4">
                       <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                        {/* 1 div content  */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                          <div>
-                            <p><strong>Diagnosis: </strong>Fever</p>
-                            <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. John, Columbia Asia Hospital Setapak</p>
-                          </div>
-                          <div>
-                            <p>09/07/2024</p>
-                          </div>
-                        </div>
-                        {/* 2 div content  */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                          <div>
-                            <p><strong>Diagnosis: </strong>Covid-19</p>
-                            <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Lim, Dr Lim Clinic</p>
-                          </div>
-                          <div>
-                            <p>07/11/2021</p>
-                          </div>
-                        </div>
-                        {/* 3 div content  */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                          <div>
-                            <p><strong>Diagnosis: </strong>Discharge letter</p>
-                            <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Gleneagles Hospital Kuala Lumpur</p>
-                          </div>
-                          <div>
-                            <p>21/10/2017</p>
-                          </div>
-                        </div>
-                        {/* 4 div content  */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }} className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300">
-                          <div>
-                            <p><strong>Diagnosis: </strong>Influenza A virus</p>
-                            <p style={{ fontStyle: 'italic', color: '#808080' }} > Dr. Wong, Kuala Lumpur Hospital</p>
-                          </div>
-                          <div>
-                            <p>16/10/2017</p>
-                          </div>
-                        </div>
+
+                        {
+                          currentPatientRecord.length > 0 ? (
+                            currentPatientRecord.map((record, index) => (
+                              <div
+                                key={index}
+                                onClick={() => onSelectRecord(index)}
+                                style={{ display: 'flex', justifyContent: 'space-between' }}
+                                className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300 hover:cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+                              >
+                                <div>
+                                  <p><strong>Diagnosis: </strong>{record.diagnosis.join(', ')}</p>
+                                  <p style={{ fontStyle: 'italic', color: '#808080' }}>Dr. John, Columbia Asia Hospital Setapak</p>
+                                </div>
+                                <div>
+                                  <p>{record.consultation_date}</p>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p>No Past Medical Record Available</p>
+                          )
+                        }
                       </div>
                     </div>
                   </div>
@@ -195,8 +222,32 @@ export default function Home() {
                 {/* Right Section */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold">Details</h3>
-                  <div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
-                    <strong>Attended Doctor:</strong>
+                  <div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md h-full">
+
+                    {
+                      selectedRecordDetails
+                        ? (
+                          <>
+                            <strong>Attended Doctor:</strong>
+                            <p>Dr. John Lee</p><br></br>
+                            <strong>Practice Address:</strong>
+                            <p>Columbia Asia Hospital Setapak</p><br></br>
+                            <strong>Date & Time:</strong>
+                            <p>{selectedRecordDetails.consultation_date}</p><br></br>
+                            <strong>Diagnosis:</strong>
+                            <p>{selectedRecordDetails.diagnosis.join(', ')}</p><br></br>
+
+                            <strong>Diagnosis Details:</strong>
+                            <p>{selectedRecordDetails.details}</p><br></br>
+                            <strong>Medications Prescribed:</strong>
+                            <p>{selectedRecordDetails.prescription}</p>
+                          </>
+                        )
+                        : (
+                          <p>No Record Found</p>
+                        )
+                    }
+                    {/* <strong>Attended Doctor:</strong>
                     <p>Dr. John Lee</p><br></br>
                     <strong>Practice Address:</strong>
                     <p>Columbia Asia Hospital Setapak</p><br></br>
@@ -211,7 +262,7 @@ export default function Home() {
                     <p>Paracetamol (Panadol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 4,000 mg per day.
                       Acetaminophen (Tylenol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 3,000 mg per day.
                       Ibuprofen (Advil, Motrin): 400 mg orally every 4-6 hours as needed for fever. Do not exceed 3,200 mg per day.
-                    </p>
+                    </p> */}
                   </div>
                 </div>
               </div>
