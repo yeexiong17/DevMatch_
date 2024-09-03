@@ -12,11 +12,11 @@ export default function Home() {
 
   const { logIn, isLoggedIn, loggedInUser, fetchSession } = useMyContext()
 
-  // List of patients that doctor have access to
-  const [patientWithAccess, setPatientWithAccess] = useState(null)
-
   const [isRecordVisible, setIsRecordVisible] = useState(false)
   const [isPatientRecordVisible, setIsPatientRecordVisible] = useState(false)
+
+  // List of patients that doctor have access to
+  const [patientWithAccess, setPatientWithAccess] = useState(null)
 
   // New Medical Record Input Value
   const [diagnosis, setDiagnosis] = useState("")
@@ -25,12 +25,14 @@ export default function Home() {
 
   // If dialog is visible or not 
   const [dialogVisible, setDialogVisible] = useState(false)
+  const [detailsDialogVisible, setDetailsDialogVisible] = useState(false)
 
   // Selected Patient's Personal Information
   const [currentPatient, setCurrentPatient] = useState(null)
 
   // Selected Patient's Medical Records
   const [currentPatientRecord, setCurrentPatientRecord] = useState([])
+  const [selectedRecordDetails, setSelectedRecordDetails] = useState(null)
 
   useEffect(() => {
     getPatientWithAccess()
@@ -175,6 +177,17 @@ export default function Home() {
     setIsPatientRecordVisible(false)
 
     setCurrentPatient(null)
+  }
+
+  const toggleDetailsDialog = (index) => {
+    setDetailsDialogVisible(true)
+    setSelectedRecordDetails(currentPatientRecord[index])
+  }
+
+  const onDetailsDialogClose = () => {
+    if (!detailsDialogVisible) return
+    setDetailsDialogVisible(false)
+    setSelectedRecordDetails(null)
   }
 
   return (
@@ -365,8 +378,9 @@ export default function Home() {
                                         currentPatientRecord.map((record, index) => (
                                           <div
                                             key={index}
+                                            onClick={() => toggleDetailsDialog(index)}
                                             style={{ display: 'flex', justifyContent: 'space-between' }}
-                                            className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300"
+                                            className="p-4 bg-gray-100 rounded-md mb-4 border-b border-gray-300 hover:cursor-pointer hover:bg-gray-200 active:bg-gray-300"
                                           >
                                             <div>
                                               <p><strong>Diagnosis: </strong>{record.diagnosis.join(', ')}</p>
@@ -385,84 +399,10 @@ export default function Home() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Right Section */}
-                            {/* TODO */}
-                            {/* <div className="mb-6">
-                              <h3 className="text-lg font-semibold">Details</h3>
-                              {!seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
-                                <strong>Attended Doctor:</strong>
-                                <p>Dr. John Lee</p><br></br>
-                                <strong>Practice Address:</strong>
-                                <p>Columbia Asia Hospital Setapak</p><br></br>
-                                <strong>Date & Time:</strong>
-                                <p>09/07/2024, 11.26 am</p><br></br>
-                                <strong>Diagnosis:</strong>
-                                <p>Fever</p><br></br>
-                                <strong>Diagnosis Details:</strong>
-                                <p>Diagnosed with fever, likely due to a viral infection, recommended rest, hydration, and antipyretics for symptom management.</p><br></br>
-                                <strong>Medications Prescribed:</strong>
-                                <p>Paracetamol (Panadol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 4,000 mg per day.
-                                  Acetaminophen (Tylenol): 500 mg orally every 4-6 hours as needed for fever. Do not exceed 3,000 mg per day.
-                                  Ibuprofen (Advil, Motrin): 400 mg orally every 4-6 hours as needed for fever. Do not exceed 3,200 mg per day.
-                                </p>
-                              </div>
-                              )}
-
-                              {seeDetails && (<div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
-                                <strong>Attended Doctor:</strong>
-                                <p>Dr. John Lee</p><br></br>
-                                <strong>Practice Address:</strong>
-                                <p>Columbia Asia Hospital Setapak</p><br></br>
-                                <strong>Date & Time:</strong>
-                                <p>09/07/2024, 11.26 am</p><br></br>
-                                <strong>Diagnosis:</strong>
-                                <p>Stroke</p><br></br>
-                                <strong>Diagnosis Details:</strong>
-                                <p>Diagnosed with stroke, immediate treatment required to restore blood flow to the brain and minimize potential damage, followed by rehabilitation and long-term management</p><br></br>
-                                <strong>Medications Prescribed:</strong>
-                                <p>Antiplatelet Agent:
-
-                                  Aspirin 81 mg orally once daily.
-                                  Clopidogrel (Plavix) 75 mg orally once daily if the patient is allergic to aspirin.
-                                  Anticoagulant (if indicated):
-
-                                  Warfarin (Coumadin) 5 mg orally once daily, adjusted based on INR levels.
-                                  Dabigatran (Pradaxa) 150 mg orally twice daily (alternative to warfarin).
-                                  Antihypertensive (if needed):
-
-                                  Lisinopril 10 mg orally once daily to control blood pressure.
-                                  Amlodipine 5 mg orally once daily.
-                                  Statin:
-
-                                  Atorvastatin (Lipitor) 40 mg orally once daily at bedtime to manage cholesterol levels.
-                                  Neuroprotective Agent (optional and under doctor's discretion):
-
-                                  Citicoline 500 mg orally twice daily.
-                                  Thrombolytic Therapy (for acute ischemic stroke, administered in hospital settings):
-
-                                  Alteplase (tPA) 0.9 mg/kg IV (10% as a bolus, the remainder over 60 minutes), administered within 4.5 hours of symptom onset.
-                                </p>
-                              </div>)}
-                            </div> */}
                           </div>
-
-                          {/* <div className="text-right">
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-all duration-300">
-                      Save & Create
-                    </button>
-                  </div> */}
                         </div>
-                        {/* //========================================End of Patient Database UI*/}
 
                         <br></br>
-                        {/* <p><strong>Your records are stored here:</strong> 
-                  <a href="http://localhost:8080/ipfs/QmcJDvi2ext2kwGqny6XCU4nWzw2NXAasuKEFveo7BG49" className="text-blue-500 ml-2">
-                    Patient Database
-                  </a>
-                </p> */}
-                        {/* <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md">View medical records</button> */}
-
                       </div>
                     </div>
                   )}
@@ -481,6 +421,47 @@ export default function Home() {
                   <button onClick={handleNewMedicalRecord} className="bg-blue-500 text-white px-4 py-2 rounded-md">
                     Record new Medical Record
                   </button>
+                </div>
+              )}
+            </Dialog>
+
+            <Dialog className="w-full lg:w-3/6" header="Patient's Record" visible={detailsDialogVisible} onHide={() => onDetailsDialogClose()} draggable={false} resizable={false}>
+              {detailsDialogVisible && (
+                <div className="p-4 bg-white rounded-md border border-gray-300 mb-4">
+
+                  {selectedRecordDetails ? (
+                    <div style={{ borderStyle: 'solid', borderWidth: '1px', borderColor: 'gray' }} className="mb-6 rounded-md">
+                      <div className="bg-gray-100 p-4 rounded-md"><h2 className="text-xl font-semibold pb-4 border-b border-gray-300">Patient Medical Information</h2></div>
+                      <div className="bg-gray-100 pl-4 pr-4 pt-0.5 rounded-md">
+                        {/* //======================================== Patient Database UI*/}
+                        <div className="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-md">
+                          <div className="grid grid-cols-1 gap-4">
+                            <div style={{ maxHeight: '330px', overflowY: 'auto' }} className="p-4 bg-gray-100 rounded-md">
+                              <strong>Attended Doctor:</strong>
+                              <p>Dr. John Lee</p><br></br>
+                              <strong>Practice Address:</strong>
+                              <p>Columbia Asia Hospital Setapak</p><br></br>
+                              <strong>Date & Time:</strong>
+                              <p>{selectedRecordDetails.consultation_date}</p><br></br>
+                              <strong>Diagnosis:</strong>
+                              <p>{selectedRecordDetails.diagnosis.join(', ')}</p><br></br>
+                              <strong>Diagnosis Details:</strong>
+                              <p>{selectedRecordDetails.details}</p><br></br>
+                              <strong>Medications Prescribed:</strong>
+                              <p>
+                                {selectedRecordDetails.prescription}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <br></br>
+                    </div>
+                  )
+                    : (
+                      <p>No Record Found</p>
+                    )}
                 </div>
               )}
             </Dialog>
